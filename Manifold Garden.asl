@@ -103,13 +103,6 @@ split {
                 if (vars.waypoints.Contains(current.level)) {
                     action = "SPLIT";
                 }
-                if (settings["allGodCubes"]) {
-                    if (current.level >= 82 && current.level <= 88) {
-                        action = "SPLIT";
-                    }
-                } else {
-                    action = "SPLIT";
-                }
             }
 
             if (settings["norepeats"]) {
