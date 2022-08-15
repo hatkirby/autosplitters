@@ -34,15 +34,18 @@ state("ManifoldGarden") {
 }
 
 startup {
+    settings.Add("every",true,"Split on every level change");
+    settings.Add("fall",false,"Including all ending falling scenes","every");
     settings.Add("allGodCubes", false, "All God Cubes waypoints");
     settings.Add("zero", false, "Zero% waypoints");
+    settings.Add("raymarchitecture", true, "Split on Raymarchitecture (ending cutsence)");
     settings.Add("norepeats",false,"Split only on the first encounter of each level");
     vars.waypoints = null;
     vars.prevLevel = 0;
-    vars.seqIndex = 0;
     vars.stopwatch = null;  // Used for the final split
     vars.prev = new List<int>();
     vars.firstRoom = false;
+    vars.fall = new List<int>{97, 98, 99, 101, 102, 103, 104};
 }
 
 init {
@@ -68,11 +71,12 @@ start {
         print(String.Format("Level changed from {0} to {1}: START", old.level, current.level));
         if (settings["zero"]) {
             vars.waypoints = new List<int>{106, 17, 110, 115, 111, 36, 44};
+        } else if (settings["allGodCubes"]) {
+            vars.waypoints = new List<int>{82, 83, 84, 85, 86, 87, 88};
         } else {
             vars.waypoints = null;
         }
         vars.prevLevel = current.level;
-        vars.seqIndex = 0;
         vars.stopwatch = Stopwatch.StartNew();
         vars.prev.Clear();
         vars.firstRoom = false;
@@ -84,13 +88,20 @@ split {
     // Split when level index changes. We don't split for the first room change in a run,
     // because that is always going to be changing from -1 to 9, and it happens a couple of
     // seconds after the timer starts.
-    if (vars.firstRoom && current.level != vars.prevLevel && current.level >= 0) {
+    if (vars.firstRoom && current.level != vars.prevLevel && current.level > 0) {
         string action = "NO SPLIT";
 
         // Ignore the split rules when script is reloaded mid-game:
         if (vars.prevLevel != 0) {
             // Split rules:
-            if (vars.waypoints == null) {
+            if (settings["every"]) {
+                if (settings["fall"] || !vars.fall.Contains(current.level)) {
+                    action = "SPLIT";
+                }
+            } else if (vars.waypoints != null) {
+                if (vars.waypoints.Contains(current.level)) {
+                    action = "SPLIT";
+                }
                 if (settings["allGodCubes"]) {
                     if (current.level >= 82 && current.level <= 88) {
                         action = "SPLIT";
@@ -98,19 +109,7 @@ split {
                 } else {
                     action = "SPLIT";
                 }
-            } else if (vars.seqIndex < vars.waypoints.Count) {
-                if (current.level == vars.waypoints[vars.seqIndex]) {
-                    vars.seqIndex++;
-                    action = String.Format("SPLIT (new seqIndex = {0})", vars.seqIndex);
-                } else {
-                    action = String.Format("NO SPLIT (seqIndex = {0}, {1} expected)",
-                        vars.seqIndex, vars.waypoints[vars.seqIndex]);
-                }
-            } else {
-                action = String.Format("NO SPLIT (seqIndex = {0}, end of waypoint sequence)", vars.seqIndex);
             }
-
-            print(String.Format("Level changed from {0} to {1}: {2}", vars.prevLevel, current.level, action));
 
             if (settings["norepeats"]) {
                 if (vars.prev.Contains(current.level)) {
@@ -118,6 +117,8 @@ split {
                 }
                 vars.prev.Add(current.level);
             }
+
+            print(String.Format("Level changed from {0} to {1}: {2}", vars.prevLevel, current.level, action));
         }
 
         vars.prevLevel = current.level;
@@ -130,9 +131,11 @@ split {
 
     // Final split of the game:
     // Split after being in one of the ending cutscenes for 1.1 seconds.
-    if ((current.level == 99 || current.level == 103 || current.level == 104)
+    if (settings["raymarchitecture"]
+        && (current.level == 99 || current.level == 103 || current.level == 104)
         && vars.stopwatch != null
         && vars.stopwatch.ElapsedMilliseconds >= 1100) {
+        print("SPLIT on Raymarchitecture");
         vars.stopwatch = null;
         return true;
     }
