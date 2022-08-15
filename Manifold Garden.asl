@@ -121,6 +121,7 @@ split {
     } else if (!vars.firstRoom && current.level == 9) {
         vars.firstRoom = true;
         vars.prevLevel = current.level;
+        vars.prev.Add(9);
     }
 
     // Final split of the game:
