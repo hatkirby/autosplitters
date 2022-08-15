@@ -1,14 +1,9 @@
 // AutoSplit script for Manifold Garden 1.0.30.14704
 //
-// Written by hatkirby, with a lot of help from preshing and Gelly.
+// Written by hatkirby, with help from preshing and Gelly.
 //
-// Automatically starts the timer ~2.4 seconds after starting a new game, and splits the timer
-// when transitioning between game levels. You must still reset the timer manually between runs.
-// If you accidentally backtrack through a portal, causing an unwanted split, you'll have
-// to undo it manually (default NumPad8 in LiveSplit).
-//
-// To compensate for the late start, you should delay your start timer by 2.4 seconds in LiveSplit.
-// (Right-click -> Edit Splits -> Start timer at:)
+// Automatically starts the timer when a new game is started. You must still reset the timer
+// manually between runs.
 //
 // A split is also triggered after being in one of the ending cutscenes for 1.1 seconds,
 // since this is when the kaleidoscope appears.
@@ -25,23 +20,16 @@
 // https://technet.microsoft.com/en-us/Library/bb896647.aspx
 
 state("ManifoldGarden") {
-    // This pointer path seems to work with Manifold Garden 1.1.0.14704 (2020-11-09):
+    // These pointer paths seem to work with Manifold Garden 1.1.0.14704 (2020-11-09):
     int level: "UnityPlayer.dll", 0x01800AB8, 0x10, 0xB8, 0x10, 0x28, 0x18, 0x60, 0x7CC;
+    bool transitionFadeHeld: "UnityPlayer.dll", 0x017945A8, 0x80, 0x10, 0x48, 0xA0, 0x10, 0xE40;
+    bool isLoadingGameFromUI: "UnityPlayer.dll", 0x017945A8, 0x90, 0x100, 0xC0, 0xC0, 0xC0, 0xC0, 0xDC1;
 
-    // This pointer path seems to work with Manifold Garden 1.0.30.13294 (2020-02-25):
-    //int level: "UnityPlayer.dll", 0x014BE300, 0x60, 0xA8, 0x38, 0x30, 0xB0, 0x118, 0x5C;
-    
-    // These ones also seem to work with version 13294, and can be tried as backups in case
-    // the one above stops working:
-    //int level:  "UnityPlayer.dll", 0x01552858, 0x8, 0x0, 0xB8, 0x80, 0x80, 0x28, 0x5C;
-    //int level:  "UnityPlayer.dll", 0x01552858, 0x28, 0x8, 0xB8, 0x80, 0x80, 0x28, 0x5C;
-
-    // This pointer path worked with Manifold Garden 1.0.29.12904 (2020-02-??)
-    //                             & Manifold Garden 1.0.29.12830 (2019-12-18)
-    //                             & Manifold Garden 1.0.29.12781 (2019-12-11):
-    //int level: "UnityPlayer.dll", 0x01507BE0, 0x0, 0x928, 0x38, 0x30, 0xB0, 0x118, 0x5C;
-
-    // This pointer path worked with older versions:
+    // Older pointer paths:
+    //int level: "UnityPlayer.dll", 0x014BE300, 0x60, 0xA8, 0x38, 0x30, 0xB0, 0x118, 0x5C; // 1.0.30.13294 (2020-02-25)
+    //int level:  "UnityPlayer.dll", 0x01552858, 0x8, 0x0, 0xB8, 0x80, 0x80, 0x28, 0x5C; // 13294
+    //int level:  "UnityPlayer.dll", 0x01552858, 0x28, 0x8, 0xB8, 0x80, 0x80, 0x28, 0x5C; // 13294
+    //int level: "UnityPlayer.dll", 0x01507BE0, 0x0, 0x928, 0x38, 0x30, 0xB0, 0x118, 0x5C; //  1.0.29.12904 (2020-02-??), 1.0.29.12830 (2019-12-18), 1.0.29.12781 (2019-12-11)
     //int level: "UnityPlayer.dll", 0x01507C68, 0x8, 0x38, 0xA8, 0x58, 0x118, 0x5C;
 }
 
@@ -54,7 +42,7 @@ startup {
     vars.seqIndex = 0;
     vars.stopwatch = null;  // Used for the final split
     vars.prev = new List<int>();
-    vars.prev.Add(9);
+    vars.firstRoom = false;
 }
 
 init {
@@ -72,26 +60,31 @@ update {
 }
 
 start {
-    if (old.level == -1 && current.level == 9) {
+    // Start the timer as soon as a game is being loaded (specifically the moment you click
+    // a save slot to start a new game in, although it will also start if you just load a file).
+    // This boolean is set to true during the studio logo when the game starts up, so we check
+    // for that as well.
+    if (current.transitionFadeHeld && current.isLoadingGameFromUI) {
         print(String.Format("Level changed from {0} to {1}: START", old.level, current.level));
         if (settings["zero"]) {
             vars.waypoints = new List<int>{106, 17, 110, 115, 111, 36, 44};
         } else {
             vars.waypoints = null;
         }
-        vars.prevLevel = 9;
+        vars.prevLevel = current.level;
         vars.seqIndex = 0;
         vars.stopwatch = Stopwatch.StartNew();
         vars.prev.Clear();
-        vars.prev.Add(current.level);
+        vars.firstRoom = false;
         return true;
     }
 }
 
 split {
-    // Split when level index changes, but avoid splitting during a loading screen
-    // or when the pointer path stops working:
-    if (current.level != vars.prevLevel && current.level >= 0) {
+    // Split when level index changes. We don't split for the first room change in a run,
+    // because that is always going to be changing from -1 to 9, and it happens a couple of
+    // seconds after the timer starts.
+    if (vars.firstRoom && current.level != vars.prevLevel && current.level >= 0) {
         string action = "NO SPLIT";
 
         // Ignore the split rules when script is reloaded mid-game:
@@ -130,6 +123,9 @@ split {
         vars.prevLevel = current.level;
         vars.stopwatch = Stopwatch.StartNew();
         return action.StartsWith("SPLIT");
+    } else if (!vars.firstRoom && current.level == 9) {
+        vars.firstRoom = true;
+        vars.prevLevel = current.level;
     }
 
     // Final split of the game:
