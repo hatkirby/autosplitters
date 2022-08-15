@@ -39,7 +39,7 @@ startup {
     settings.Add("fall",false,"Including all ending falling scenes","every");
     settings.Add("allGodCubes", false, "All God Cubes waypoints");
     settings.Add("zero", false, "Zero% waypoints");
-    settings.Add("raymarchitecture", true, "Split on Raymarchitecture (ending cutsence)");
+    settings.Add("raymarchitecture", true, "Split on Raymarchitecture (ending cutscene)");
     settings.Add("norepeats",false,"Split only on the first encounter of each level");
     vars.waypoints = null;
     vars.prevLevel = 0;
