@@ -35,7 +35,16 @@ startup {
     vars.unlockAchievement.offset = 0x96D700;
 
     // If this isn't checked, then it will only split on The Obelisk.
-    settings.Add("allachs", false, "Split on every achievement");
+    settings.Add("ACH_AMMO", false, "Split on Reloaded");
+    settings.Add("ACH_HORROR_BOO", false, "Split on BOO!!!");
+    settings.Add("ACH_SHOOTING_GALLERY", false, "Split on On Rails");
+    settings.Add("ACH_TELESCOPE", false, "Split on Dahh!");
+    settings.Add("ACH_RECORDERS", false, "Split on Investigator");
+    settings.Add("ACH_SNAKE", false, "Split on SNeK");
+    settings.Add("ACH_LABYRINTH_BOOK", false, "Split on Student");
+    settings.Add("ACH_LAST_PUZZLE", true, "Split on The Obelisk");
+    settings.Add("ACH_DRAW_ON_WIRE", false, "Split on Outside the Box");
+    settings.Add("ACH_CINEMATIC", false, "Split on Success");
 }
 
 init {
@@ -163,7 +172,7 @@ split {
         game.ReadString((IntPtr)(vars.lastAchievement.Current + 0x14), ReadStringType.UTF16, 40, out result);
         vars.Log(result);
 
-        return (settings["allachs"] || result == "ACH_LAST_PUZZLE");
+        return settings[result];
     }
 }
 
