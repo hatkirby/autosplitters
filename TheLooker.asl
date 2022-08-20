@@ -3,7 +3,9 @@
 // Written by hatkirby, with inspiration from CaptainRektbeard's Marble Marcher
 // autosplitter.
 
-state("The Looker") {}
+state("The Looker") {
+    bool witnessModeActive: "UnityPlayer.dll", 0x01968940, 0x88, 0x648, 0x218, 0x0, 0xB8, 0x28, 0x180;
+}
 
 startup {
     // For logging!
@@ -164,6 +166,10 @@ init {
 update
 {
     vars.Watchers.UpdateAll(game);
+}
+
+start {
+    return current.witnessModeActive;
 }
 
 split {
