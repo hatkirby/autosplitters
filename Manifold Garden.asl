@@ -1,6 +1,6 @@
 // AutoSplit script for Manifold Garden
 //
-// Written by hatkirby, with help from preshing and Gelly.
+// Written by hatkirby, with help from preshing, Gelly, and darkid.
 //
 // Automatically starts the timer when a new game is started. You must still
 // reset the timer manually between runs.
@@ -8,9 +8,17 @@
 // A split is also triggered after being in one of the ending cutscenes for 1.1
 // seconds, since this is when the kaleidoscope appears.
 //
-// If you check "All God Cubes waypoints" in the script's Advanced settings
-// (below), the script will only split at mandala scenes. This is useful when
-// running "All God Cubes" categories.
+// The following options are mutually exclusive:
+// - Split on every level change
+// - All God Cubes waypoints
+// - Zero% waypoints
+// - Split based on a configuration file
+//
+// If you want to customize which levels the autosplitter splits at, create a
+// file with a .mg_config extension and put it in the same directory as your
+// splits. This file should contain a list of level names, one per line. These
+// level names must exactly match the names shown in-game using the
+// toggle_beta_message feature.
 //
 // This should be mostly version-independent, but it works best on 1.0.0.14704
 // (Steam "Speedrunning Branch").
@@ -26,12 +34,12 @@ startup {
     vars.Helper = Activator.CreateInstance(type, timer, this);
     vars.Helper.LoadSceneManager = true;
 
+    settings.Add("raymarchitecture", true, "Split on Raymarchitecture (ending cutscene)");
+    settings.Add("norepeats",false,"Split only on the first encounter of each level");
     settings.Add("every",true,"Split on every level change");
     settings.Add("fall",false,"Including all ending falling scenes","every");
     settings.Add("allGodCubes", false, "All God Cubes waypoints");
     settings.Add("zero", false, "Zero% waypoints");
-    settings.Add("raymarchitecture", true, "Split on Raymarchitecture (ending cutscene)");
-    settings.Add("norepeats",false,"Split only on the first encounter of each level");
 
     vars.waypoints = null;
     vars.prevLevel = 0;
@@ -91,6 +99,39 @@ startup {
         "World_804_Optimized",
         "World_071_AkshardhamTemple_Optimized"
     };
+
+    vars.configFiles = null;
+    vars.settings = settings;
+    var findConfigFiles = (Action<string>)((string folder) => {
+        var files = new List<string>();
+        if (folder != null) {
+            print("Searching for config files in '" + folder + "'");
+            files.AddRange(System.IO.Directory.GetFiles(folder, "*.mg_config"));
+            files.AddRange(System.IO.Directory.GetFiles(folder, "*.mg_config.txt"));
+            files.AddRange(System.IO.Directory.GetFiles(folder, "*.mg_conf"));
+            files.AddRange(System.IO.Directory.GetFiles(folder, "*.mg_confi"));
+            print("Found " + files.Count + " config files");
+        }
+
+        // Only add the parent setting the first time we call this function
+        if (vars.configFiles == null) {
+            vars.configFiles = new Dictionary<string, string>();
+            vars.settings.Add("configs", (files.Count > 0), "Split based on configuration file:");
+        }
+
+        foreach (var file in files) {
+            string fileName = file.Split('\\').Last();
+            if (vars.configFiles.ContainsKey(fileName)) continue;
+            vars.configFiles[fileName] = file;
+            vars.settings.Add(fileName, false, null, "configs");
+        }
+    });
+    // Search for config files relative to LiveSplit.exe
+    findConfigFiles(Directory.GetCurrentDirectory());
+    // Search for config files relative to the current layout
+    findConfigFiles(System.IO.Path.GetDirectoryName(timer.Layout.FilePath));
+    // Search for config files relative to the current splits
+    findConfigFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath));
 }
 
 init {
@@ -110,6 +151,20 @@ init {
     });
 
     vars.Helper.Load();
+
+    vars.configWaypoints = null;
+    if (settings["configs"]) {
+        string[] lines = {""};
+        foreach (var configFile in vars.configFiles.Keys) {
+            if (settings[configFile]) {
+                // Full path is saved in the dictionary.
+                vars.configWaypoints = System.IO.File.ReadAllLines(vars.configFiles[configFile]);
+                print("Selected config file: " + configFile);
+                print("Config contains " + vars.configWaypoints.Length + " lines");
+                break;
+            }
+        }
+    }
 }
 
 update {
@@ -153,22 +208,25 @@ start {
     // moment you click a save slot to start a new game in, although it will
     // also start if you just load a file). This boolean is set to true during
     // the studio logo when the game starts up, so we check for that as well.
-    if (vars.studioScreenDone && current.isLoadingGameFromUI) {
-        print(String.Format("Level changed from {0} to {1}: START", old.level, current.level));
-        if (settings["zero"]) {
-            vars.waypoints = vars.zeroPercentPoints;
-        } else if (settings["allGodCubes"]) {
-            vars.waypoints = vars.mandalaScenes;
-        } else {
-            vars.waypoints = null;
-        }
-        vars.prevLevel = current.level;
-        vars.stopwatch = Stopwatch.StartNew();
-        vars.prev.Clear();
-        vars.firstRoom = false;
-        vars.inEnding = false;
-        return true;
+    return (vars.studioScreenDone && current.isLoadingGameFromUI);
+}
+
+onStart {
+    print("START based on file load");
+    if (settings["zero"]) {
+        vars.waypoints = vars.zeroPercentPoints;
+    } else if (settings["allGodCubes"]) {
+        vars.waypoints = vars.mandalaScenes;
+    } else if (settings["configs"] && vars.configWaypoints != null) {
+        vars.waypoints = new List<string>(vars.configWaypoints);
+    } else {
+        vars.waypoints = null;
     }
+    vars.prevLevel = current.level;
+    vars.stopwatch = Stopwatch.StartNew();
+    vars.prev.Clear();
+    vars.firstRoom = false;
+    vars.inEnding = false;
 }
 
 split {
