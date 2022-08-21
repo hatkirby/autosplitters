@@ -11,6 +11,11 @@ state("The Looker") {
 }
 
 startup {
+    var bytes = File.ReadAllBytes(@"Components\LiveSplit.ASLHelper.bin");
+    var type = Assembly.Load(bytes).GetType("ASLHelper.Unity");
+    vars.Helper = Activator.CreateInstance(type, timer, this);
+    vars.Helper.LoadSceneManager = true;
+
     // For logging!
     vars.Log = (Action<object>)((output) => print("[The Looker ASL] " + output));
 
@@ -164,15 +169,37 @@ init {
     {
         (vars.lastAchievement = new MemoryWatcher<IntPtr>((IntPtr)vars.unlockAchievement.outputPtr))
     };
+
+    vars.Helper.TryOnLoad = (Func<dynamic, bool>)(mono =>
+    {
+        var saveLoad = mono.GetClass("SaveLoad");
+        vars.Helper["loadingFinished"] = saveLoad.Make<bool>("loadingFinished");
+
+        return true;
+    });
+
+    vars.Helper.Load();
 }
 
 update
 {
+    if (!vars.Helper.Update())
+		return false;
+
     vars.Watchers.UpdateAll(game);
 }
 
+isLoading {
+    return (vars.Helper.Scenes.Active.Index != 1) || !vars.Helper["loadingFinished"].Current;
+}
+
 start {
-    return current.witnessModeActive || (current.playerX != old.playerX) || (current.playerY != old.playerY) || (current.playerZ != old.playerZ);
+    return (vars.Helper.Scenes.Active.Index == 1)
+        && vars.Helper["loadingFinished"].Current
+        && (current.witnessModeActive
+            || (current.playerX != old.playerX)
+            || (current.playerY != old.playerY)
+            || (current.playerZ != old.playerZ));
 }
 
 split {
@@ -185,8 +212,15 @@ split {
     }
 }
 
+exit
+{
+	vars.Helper.Dispose();
+}
+
 shutdown
 {
+    vars.Helper.Dispose();
+
 	if (game == null)
         return;
 
