@@ -5,6 +5,9 @@
 
 state("The Looker") {
     bool witnessModeActive: "UnityPlayer.dll", 0x01968940, 0x88, 0x648, 0x218, 0x0, 0xB8, 0x28, 0x180;
+    float playerX: "UnityPlayer.dll", 0x019DFDB8, 0x0, 0x220, 0x250, 0x60, 0xB0, 0x28, 0x43C;
+    float playerY: "UnityPlayer.dll", 0x019DFDB8, 0x0, 0x220, 0x250, 0x60, 0xB0, 0x28, 0x440;
+    float playerZ: "UnityPlayer.dll", 0x019DFDB8, 0x0, 0x220, 0x250, 0x60, 0xB0, 0x28, 0x444;
 }
 
 startup {
@@ -169,7 +172,7 @@ update
 }
 
 start {
-    return current.witnessModeActive;
+    return current.witnessModeActive || (current.playerX != old.playerX) || (current.playerY != old.playerY) || (current.playerZ != old.playerZ);
 }
 
 split {
