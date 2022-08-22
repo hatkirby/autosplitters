@@ -29,6 +29,15 @@
 state("ManifoldGarden") {}
 
 startup {
+    // Relative to Livesplit.exe
+    vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_manifold.log";
+    vars.log = (Action<string>)((string logLine) => {
+        print("[Manifold Garden ASL] " + logLine);
+        string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss.fff");
+        // AppendAllText will create the file if it doesn't exist.
+        System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
+    });
+
     var bytes = File.ReadAllBytes(@"Components\LiveSplit.ASLHelper.bin");
     var type = Assembly.Load(bytes).GetType("ASLHelper.Unity");
     vars.Helper = Activator.CreateInstance(type, timer, this);
@@ -105,12 +114,12 @@ startup {
     var findConfigFiles = (Action<string>)((string folder) => {
         var files = new List<string>();
         if (folder != null) {
-            print("Searching for config files in '" + folder + "'");
+            vars.log("Searching for config files in '" + folder + "'");
             files.AddRange(System.IO.Directory.GetFiles(folder, "*.mg_config"));
             files.AddRange(System.IO.Directory.GetFiles(folder, "*.mg_config.txt"));
             files.AddRange(System.IO.Directory.GetFiles(folder, "*.mg_conf"));
             files.AddRange(System.IO.Directory.GetFiles(folder, "*.mg_confi"));
-            print("Found " + files.Count + " config files");
+            vars.log("Found " + files.Count + " config files");
         }
 
         // Only add the parent setting the first time we call this function
@@ -132,6 +141,8 @@ startup {
     findConfigFiles(System.IO.Path.GetDirectoryName(timer.Layout.FilePath));
     // Search for config files relative to the current splits
     findConfigFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath));
+
+    vars.log("Autosplitter loaded");
 }
 
 init {
@@ -159,8 +170,8 @@ init {
             if (settings[configFile]) {
                 // Full path is saved in the dictionary.
                 vars.configWaypoints = System.IO.File.ReadAllLines(vars.configFiles[configFile]);
-                print("Selected config file: " + configFile);
-                print("Config contains " + vars.configWaypoints.Length + " lines");
+                vars.log("Selected config file: " + configFile);
+                vars.log("Config contains " + vars.configWaypoints.Length + " lines");
                 break;
             }
         }
@@ -176,7 +187,7 @@ update {
 
     if (!vars.doneFirstLook) {
         vars.doneFirstLook = true;
-        print(String.Format("Connected to Manifold Garden version {0}", vars.Helper["version"].Current));
+        vars.log(String.Format("Connected to Manifold Garden version {0}", vars.Helper["version"].Current));
 
         current.onStartScreen = vars.startScreens.Contains(vars.Helper.Scenes.Active.Name);
 
@@ -208,25 +219,24 @@ start {
     // moment you click a save slot to start a new game in, although it will
     // also start if you just load a file). This boolean is set to true during
     // the studio logo when the game starts up, so we check for that as well.
-    return (vars.studioScreenDone && current.isLoadingGameFromUI);
-}
-
-onStart {
-    print("START based on file load");
-    if (settings["zero"]) {
-        vars.waypoints = vars.zeroPercentPoints;
-    } else if (settings["allGodCubes"]) {
-        vars.waypoints = vars.mandalaScenes;
-    } else if (settings["configs"] && vars.configWaypoints != null) {
-        vars.waypoints = new List<string>(vars.configWaypoints);
-    } else {
-        vars.waypoints = null;
+    if (vars.studioScreenDone && current.isLoadingGameFromUI) {
+        vars.log("START based on file load");
+        if (settings["zero"]) {
+            vars.waypoints = vars.zeroPercentPoints;
+        } else if (settings["allGodCubes"]) {
+            vars.waypoints = vars.mandalaScenes;
+        } else if (settings["configs"] && vars.configWaypoints != null) {
+            vars.waypoints = new List<string>(vars.configWaypoints);
+        } else {
+            vars.waypoints = null;
+        }
+        vars.prevLevel = current.level;
+        vars.stopwatch = Stopwatch.StartNew();
+        vars.prev.Clear();
+        vars.firstRoom = false;
+        vars.inEnding = false;
+        return true;
     }
-    vars.prevLevel = current.level;
-    vars.stopwatch = Stopwatch.StartNew();
-    vars.prev.Clear();
-    vars.firstRoom = false;
-    vars.inEnding = false;
 }
 
 split {
@@ -237,7 +247,7 @@ split {
         && current.level != vars.prevLevel
         && current.level > 0
         && !vars.noSplitScenes.Contains(vars.Helper.Scenes.Active.Name)) {
-        print(String.Format("{0}: '{1}'", current.level, vars.Helper.Scenes.Active.Name));
+        vars.log(String.Format("{0}: '{1}'", current.level, vars.Helper.Scenes.Active.Name));
 
         string action = "NO SPLIT";
 
@@ -260,7 +270,7 @@ split {
                 vars.prev.Add(current.level);
             }
 
-            print(String.Format("Level changed from {0} to {1}: {2}", vars.prevLevel, current.level, action));
+            vars.log(String.Format("Level changed from {0} to {1}: {2}", vars.prevLevel, current.level, action));
         }
 
         if (vars.endings.Contains(vars.Helper.Scenes.Active.Name)) {
@@ -282,7 +292,7 @@ split {
         && vars.inEnding
         && vars.stopwatch != null
         && vars.stopwatch.ElapsedMilliseconds >= 1100) {
-        print("SPLIT on Raymarchitecture");
+        vars.log("SPLIT on Raymarchitecture");
         vars.stopwatch = null;
         return true;
     }
