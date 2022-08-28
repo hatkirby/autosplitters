@@ -45,6 +45,7 @@ startup {
 
     settings.Add("raymarchitecture", true, "Split on Raymarchitecture (ending cutscene)");
     settings.Add("norepeats",false,"Split only on the first encounter of each level");
+    settings.Add("gravChanges",false, "Override first text component with a Gravity Changes count");
     settings.Add("every",true,"Split on every level change");
     settings.Add("fall",false,"Including all ending falling scenes","every");
     settings.Add("allGodCubes", false, "All God Cubes waypoints");
@@ -156,6 +157,9 @@ init {
         var versionNum = mono.GetClass("VersionNumber");
         vars.Helper["version"] = versionNum.MakeString("instance", "_text");
 
+        var rigidCon = mono.GetClass("RigidbodyController");
+        vars.Helper["gravity"] = gameMan.Make<int>("playerController", rigidCon["_gravityDirection"]);
+
         current.onStartScreen = false;
 
         return true;
@@ -176,6 +180,19 @@ init {
             }
         }
     }
+
+    vars.updateText = false;
+    if (settings["gravChanges"]) {
+        foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
+            if (component.GetType().Name == "TextComponent") {
+                vars.tc = component;
+                vars.tcs = vars.tc.Settings;
+                vars.updateText = true;
+                vars.log("Found text component at " + component);
+                break;
+            }
+        }
+    }
 }
 
 update {
@@ -184,6 +201,7 @@ update {
 
     current.level = vars.Helper.Scenes.Active.Index;
     current.isLoadingGameFromUI = vars.Helper["isLoadingGameFromUI"].Current;
+    current.gravity = vars.Helper["gravity"].Current;
 
     if (!vars.doneFirstLook) {
         vars.doneFirstLook = true;
@@ -211,6 +229,12 @@ update {
         if (!vars.studioScreenDone) {
             vars.studioScreenDone = !current.isLoadingGameFromUI;
         }
+        if (current.gravity != old.gravity) {
+            vars.gravChanges += 1;
+            if (settings["gravChanges"] && vars.updateText) {
+                vars.tcs.Text2 = vars.gravChanges.ToString();
+            }
+        }
     }
 }
 
@@ -235,6 +259,11 @@ start {
         vars.prev.Clear();
         vars.firstRoom = false;
         vars.inEnding = false;
+        vars.gravChanges = 0;
+        if (settings["gravChanges"] && vars.updateText) {
+            vars.tcs.Text1 = "Gravity Changes:";
+            vars.tcs.Text2 = "0";
+        }
         return true;
     }
 }
@@ -300,6 +329,13 @@ split {
 
 reset {
     return current.onStartScreen && !old.onStartScreen;
+}
+
+onReset {
+    if (settings["gravChanges"] && vars.updateText) {
+        vars.tcs.Text1 = "Gravity Changes:";
+        vars.tcs.Text2 = "0";
+    }
 }
 
 exit
