@@ -161,6 +161,7 @@ init {
         vars.Helper["gravity"] = gameMan.Make<int>("playerController", rigidCon["_gravityDirection"]);
 
         current.onStartScreen = false;
+        current.onMandalaScene = false;
 
         return true;
     });
@@ -201,7 +202,6 @@ update {
 
     current.level = vars.Helper.Scenes.Active.Index;
     current.isLoadingGameFromUI = vars.Helper["isLoadingGameFromUI"].Current;
-    current.gravity = vars.Helper["gravity"].Current;
 
     if (!vars.doneFirstLook) {
         vars.doneFirstLook = true;
@@ -225,6 +225,10 @@ update {
     } else {
         if (current.level != old.level) {
             current.onStartScreen = vars.startScreens.Contains(vars.Helper.Scenes.Active.Name);
+            current.onMandalaScene = vars.mandalaScenes.Contains(vars.Helper.Scenes.Active.Name);
+        }
+        if (!current.onMandalaScene) {
+            current.gravity = vars.Helper["gravity"].Current;
         }
         if (!vars.studioScreenDone) {
             vars.studioScreenDone = !current.isLoadingGameFromUI;
