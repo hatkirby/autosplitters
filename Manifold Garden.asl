@@ -242,6 +242,10 @@ update {
     }
 }
 
+isLoading {
+    return current.isLoadingGameFromUI;
+}
+
 start {
     // Start the timer as soon as a game is being loaded (specifically the
     // moment you click a save slot to start a new game in, although it will
