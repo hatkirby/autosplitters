@@ -46,6 +46,7 @@ startup {
     settings.Add("raymarchitecture", true, "Split on Raymarchitecture (ending cutscene)");
     settings.Add("norepeats",false,"Split only on the first encounter of each level");
     settings.Add("gravChanges",false, "Override first text component with a Gravity Changes count");
+    settings.Add("planted",false,"Split when a god cube is planted");
     settings.Add("every",true,"Split on every level change");
     settings.Add("fall",false,"Including all ending falling scenes","every");
     settings.Add("allGodCubes", false, "All God Cubes waypoints");
@@ -57,6 +58,7 @@ startup {
     vars.prev = new List<int>();
     vars.firstRoom = false;
     vars.inEnding = false;
+    vars.maxGodPlanted = 0;
     vars.noSplitScenes = new List<String>{
         "StudioLogoScreen",
         "RequiredComponents",
@@ -160,6 +162,9 @@ init {
         var rigidCon = mono.GetClass("RigidbodyController");
         vars.Helper["gravity"] = gameMan.Make<int>("playerController", rigidCon["_gravityDirection"]);
 
+        var mandalaMan = mono.GetClass("MandalaManager");
+        vars.Helper["godCubesPlanted"] = gameMan.MakeList<int>("s_instance", "mandalaManager", mandalaMan["PlacedGodCubes"]);
+
         current.onStartScreen = false;
         current.onMandalaScene = false;
 
@@ -239,6 +244,7 @@ update {
                 vars.tcs.Text2 = vars.gravChanges.ToString();
             }
         }
+        current.godCubesPlanted = vars.Helper["godCubesPlanted"].Current.Count;
     }
 }
 
@@ -267,6 +273,7 @@ start {
         vars.prev.Clear();
         vars.firstRoom = false;
         vars.inEnding = false;
+        vars.maxGodPlanted = current.godCubesPlanted;
         vars.gravChanges = 0;
         if (settings["gravChanges"] && vars.updateText) {
             vars.tcs.Text1 = "Gravity Changes:";
@@ -321,6 +328,13 @@ split {
         vars.firstRoom = true;
         vars.prevLevel = current.level;
         vars.prev.Add(current.level);
+    }
+
+    // Optionally split when a god cube is actually planted in a socket.
+    if (settings["planted"] && current.godCubesPlanted > vars.maxGodPlanted) {
+        vars.log("SPLIT on planted god cube");
+        vars.maxGodPlanted = current.godCubesPlanted;
+        return true;
     }
 
     // Final split of the game:
