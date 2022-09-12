@@ -1,6 +1,6 @@
 state("Taiji")
 {
-    // v9.10.2022
+    // v9.10.2022, v9.12.2022.6
     int solveCount: "GameAssembly.dll", 0x0168ED88, 0x80, 0x100, 0xD94;
     byte10 worldsCompleted: "GameAssembly.dll", 0x015C8010, 0x48, 0x40, 0x80, 0x290, 0xB8, 0x10, 0x20;
 }
