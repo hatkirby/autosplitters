@@ -13,11 +13,14 @@ startup
         print("[Lingo ASL] " + logLine);
     });
 
+    settings.Add("every",false,"Split on every panel solve");
     settings.Add("end", false, "Split on The End");
     settings.Add("unchallenged", false, "Split on The Unchallenged");
     settings.Add("master", false, "Split on The Master");
     settings.Add("pilgrimage", false, "Split on Pilgrimage");
     settings.Add("showLastPanel",false, "Override first text component with the name of the most recently solved panel");
+
+    vars.prevPanel = "";
 
     vars.log("Autosplitter loaded");
 }
@@ -40,7 +43,7 @@ init
         throw new Exception("Could not find magic autosplitter array!");
     }
     vars.firstInput = new MemoryWatcher<byte>(ptr + 8);
-    vars.lastPanel = new StringWatcher(ptr + 9, 32);
+    vars.panel = new StringWatcher(ptr + 9, 32);
 
     vars.log(String.Format("Magic autosplitter array: {0}", ptr.ToString("X")));
 
@@ -61,10 +64,10 @@ init
 update
 {
     vars.firstInput.Update(game);
-    vars.lastPanel.Update(game);
+    vars.panel.Update(game);
 
-    if (settings["showLastPanel"] && vars.updateText && vars.lastPanel.Old != vars.lastPanel.Current) {
-        vars.tcs.Text2 = vars.lastPanel.Current;
+    if (settings["showLastPanel"] && vars.updateText && vars.panel.Old != vars.panel.Current) {
+        vars.tcs.Text2 = vars.panel.Current;
     }
 }
 
@@ -75,6 +78,8 @@ start
 
 onStart
 {
+    vars.prevPanel = vars.panel.Current;
+
     if (settings["showLastPanel"] && vars.updateText) {
         vars.tcs.Text1 = "Last Panel:";
         vars.tcs.Text2 = "";
@@ -83,20 +88,27 @@ onStart
 
 split
 {
-    if (settings["end"] && vars.lastPanel.Old != "Panel_end_end" && vars.lastPanel.Current == "Panel_end_end") {
-        vars.log("Split on The End");
-        return true;
-    }
-    if (settings["unchallenged"] && vars.lastPanel.Old == "Panel_challenged_unchallenged" && vars.lastPanel.Current == "Panel_challenged_unchallenged") {
-        vars.log("Split on The Unchallenged");
-        return true;
-    }
-    if (settings["master"] && vars.lastPanel.Old == "Panel_master_master" && vars.lastPanel.Current == "Panel_master_master") {
-        vars.log("Split on The Master");
-        return true;
-    }
-    if (settings["pilgrimage"] && vars.lastPanel.Old == "Panel_pilgrim" && vars.lastPanel.Current == "Panel_pilgrim") {
-        vars.log("Split on Pilgrimage");
-        return true;
+    if (vars.panel.Current != vars.prevPanel) {
+        string action = "NO SPLIT";
+
+        if (settings["every"]) {
+            action = "SPLIT";
+            vars.log("Split on any panel: " + vars.panel.Current);
+        } else if (settings["end"] && vars.panel.Current == "Panel_end_end") {
+            action = "SPLIT";
+            vars.log("Split on The End");
+        } else if (settings["unchallenged"] && vars.panel.Current == "Panel_challenged_unchallenged") {
+            action = "SPLIT";
+            vars.log("Split on The Unchallenged");
+        } else if (settings["master"] && vars.panel.Current == "Panel_master_master") {
+            action = "SPLIT";
+            vars.log("Split on The Master");
+        } else if (settings["pilgrimage"] && vars.panel.Current == "Panel_pilgrim") {
+            action = "SPLIT";
+            vars.log("Split on Pilgrimage");
+        }
+
+        vars.prevPanel = vars.panel.Current;
+        return action.StartsWith("SPLIT");
     }
 }
