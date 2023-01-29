@@ -24,6 +24,39 @@ startup
 
     vars.prevPanel = "";
 
+    vars.configFiles = null;
+    vars.settings = settings;
+    var findConfigFiles = (Action<string>)((string folder) => {
+        var files = new List<string>();
+        if (folder != null) {
+            vars.log("Searching for config files in '" + folder + "'");
+            files.AddRange(System.IO.Directory.GetFiles(folder, "*.lingo_config"));
+            files.AddRange(System.IO.Directory.GetFiles(folder, "*.lingo_config.txt"));
+            files.AddRange(System.IO.Directory.GetFiles(folder, "*.lingo_conf"));
+            files.AddRange(System.IO.Directory.GetFiles(folder, "*.lingo_confi"));
+            vars.log("Found " + files.Count + " config files");
+        }
+
+        // Only add the parent setting the first time we call this function
+        if (vars.configFiles == null) {
+            vars.configFiles = new Dictionary<string, string>();
+            vars.settings.Add("configs", (files.Count > 0), "Split based on configuration file:");
+        }
+
+        foreach (var file in files) {
+            string fileName = file.Split('\\').Last();
+            if (vars.configFiles.ContainsKey(fileName)) continue;
+            vars.configFiles[fileName] = file;
+            vars.settings.Add(fileName, false, null, "configs");
+        }
+    });
+    // Search for config files relative to LiveSplit.exe
+    findConfigFiles(Directory.GetCurrentDirectory());
+    // Search for config files relative to the current layout
+    findConfigFiles(System.IO.Path.GetDirectoryName(timer.Layout.FilePath));
+    // Search for config files relative to the current splits
+    findConfigFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath));
+
     vars.log("Autosplitter loaded");
 
     vars.levelOneThePanels = new List<String>{
@@ -85,17 +118,7 @@ init
     vars.log(String.Format("Magic autosplitter array: {0}", ptr.ToString("X")));
 
     vars.updateText = false;
-    if (settings["showLastPanel"]) {
-        foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
-            if (component.GetType().Name == "TextComponent") {
-                vars.tc = component;
-                vars.tcs = vars.tc.Settings;
-                vars.updateText = true;
-                vars.log("Found text component at " + component);
-                break;
-            }
-        }
-    }
+    vars.configWaypoints = null;
 }
 
 update
@@ -117,9 +140,36 @@ onStart
 {
     vars.prevPanel = vars.panel.Current;
 
-    if (settings["showLastPanel"] && vars.updateText) {
-        vars.tcs.Text1 = "Last Panel:";
-        vars.tcs.Text2 = "";
+    vars.updateText = false;
+    if (settings["showLastPanel"]) {
+        foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
+            if (component.GetType().Name == "TextComponent") {
+                vars.tc = component;
+                vars.tcs = vars.tc.Settings;
+                vars.tcs.Text1 = "Last Panel:";
+                vars.tcs.Text2 = "";
+                vars.updateText = true;
+                vars.log("Found text component at " + component);
+                break;
+            }
+        }
+    }
+
+    vars.configWaypoints = null;
+    if (settings["configs"]) {
+        string[] lines = {""};
+        foreach (var configFile in vars.configFiles.Keys) {
+            if (settings[configFile]) {
+                // Full path is saved in the dictionary.
+                var splitlist = System.IO.File.ReadAllLines(vars.configFiles[configFile]);
+                if (splitlist != null) {
+                    vars.configWaypoints = new List<string>(splitlist);
+                }
+                vars.log("Selected config file: " + configFile);
+                vars.log("Config contains " + splitlist.Length + " lines");
+                break;
+            }
+        }
     }
 }
 
@@ -149,6 +199,9 @@ split
         } else if (settings["levelOneOranges"] && vars.levelOneOranges.Contains(vars.panel.Current)) {
             action = "SPLIT";
             vars.log("Split on LL1 tower orange");
+        } else if (settings["configs"] && vars.configWaypoints != null && vars.configWaypoints.Contains(vars.panel.Current)) {
+            action = "SPLIT";
+            vars.log("Split on config file");
         }
 
         vars.prevPanel = vars.panel.Current;
