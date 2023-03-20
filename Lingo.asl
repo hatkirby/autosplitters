@@ -14,12 +14,13 @@ startup
     });
 
     settings.Add("every",false,"Split on every panel solve");
-    settings.Add("end", false, "Split on The End");
+    settings.Add("end", false, "Split on The End / The Ascendant");
     settings.Add("unchallenged", false, "Split on The Unchallenged");
     settings.Add("master", false, "Split on The Master");
     settings.Add("pilgrimage", false, "Split on Pilgrimage");
     settings.Add("levelOneThePanels",false,"Split on LL1 achievement panels (besides End and Master)");
     settings.Add("levelOneOranges",false,"Split on orange panels that open up the LL1 tower");
+    settings.Add("levelTwoThePanels",false,"Split on LL2 achievement panels (besides Ascendant)");
     settings.Add("showLastPanel",false, "Override first text component with the name of the most recently solved panel");
 
     vars.prevPanel = "";
@@ -92,6 +93,57 @@ startup
         "Panel_learns_unsew_unrest_4",
         "Panel_drawl_runs_enter_5",
         "Panel_reads_rust_lawns_6"
+    };
+
+    vars.levelTwoThePanels = new List<String>{
+        "Panel_the_analytical",
+        "Panel_the_mythical",
+        "Panel_the_unforgettable",
+        "Panel_the_fuzzy",
+        "Panel_the_sharp",
+        "Panel_the_structured",
+        "Panel_the_devious",
+        "Panel_the_amazing",
+        "Panel_the_frozen",
+        "Panel_the_lunar",
+        "Panel_the_learned",
+        "Panel_the_arcadian",
+        "Panel_the_stellar",
+        "Panel_the_handy",
+        "Panel_orange_8",
+        "Panel_the_ethereal",
+        "Panel_the_sapient",
+        "Panel_the_worldly",
+        "Panel_the_seen",
+        "Panel_the_perennial",
+        "Panel_the_memorable",
+        "Panel_the_exemplary",
+        "Panel_the_fresh",
+        "Panel_the_veteran",
+        "Panel_the_royal",
+        "Panel_the_unscrambled",
+        "Panel_the_appreciated",
+        "Panel_the_exact",
+        "Panel_the_unopposed",
+        "Panel_the_unsullied",
+        "Panel_the_multitalented",
+        "Panel_the_sweet",
+        "Panel_the_tasty",
+        "Panel_the_hidden",
+        "Panel_the_magnificent",
+        "Panel_the_magnanimous",
+        "Panel_the_magnate",
+        "Panel_the_magnetic",
+        "Panel_the_archaeologist",
+        "Panel_end",
+        "Panel_the_lonely",
+        "Panel_the_lucky",
+        "Panel_the_lettered",
+        "Panel_the_knowledgeable",
+        "Panel_the_welcoming",
+        "Panel_the_direct",
+        "Panel_the_expert",
+        "Panel_the_infallible"
     };
 }
 
@@ -199,6 +251,9 @@ split
         } else if (settings["levelOneOranges"] && vars.levelOneOranges.Contains(vars.panel.Current)) {
             action = "SPLIT";
             vars.log("Split on LL1 tower orange");
+        } else if (settings["levelTwoThePanels"] && vars.levelTwoThePanels.Contains(vars.panel.Current)) {
+            action = "SPLIT";
+            vars.log("Split on LL2 THE panel");
         } else if (settings["configs"] && vars.configWaypoints != null && vars.configWaypoints.Contains(vars.panel.Current)) {
             action = "SPLIT";
             vars.log("Split on config file");
