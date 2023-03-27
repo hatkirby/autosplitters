@@ -143,7 +143,9 @@ startup
         "Panel_the_welcoming",
         "Panel_the_direct",
         "Panel_the_expert",
-        "Panel_the_infallible"
+        "Panel_the_infallible",
+        "Panel_the_earnest",
+        "Panel_the_right"
     };
 }
 
