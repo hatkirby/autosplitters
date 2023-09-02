@@ -21,6 +21,7 @@ startup
     settings.Add("levelOneThePanels",false,"Split on LL1 achievement panels (besides End and Master)");
     settings.Add("levelOneOranges",false,"Split on orange panels that open up the LL1 tower");
     settings.Add("levelTwoThePanels",false,"Split on LL2 achievement panels (besides Ascendant)");
+    settings.Add("patchAchieves",false,"Split on The Pumpkin Patch achievements");
     settings.Add("showLastPanel",false, "Override first text component with the name of the most recently solved panel");
 
     vars.prevPanel = "";
@@ -147,6 +148,11 @@ startup
         "Panel_the_earnest",
         "Panel_the_right"
     };
+
+    vars.patchAchievePanels = new List<String>{
+        "Panel_the_associating",
+        "Panel_the_deciphering"
+    };
 }
 
 init
@@ -256,6 +262,9 @@ split
         } else if (settings["levelTwoThePanels"] && vars.levelTwoThePanels.Contains(vars.panel.Current)) {
             action = "SPLIT";
             vars.log("Split on LL2 THE panel");
+        } else if (settings["patchAchieves"] && vars.patchAchievePanels.Contains(vars.panel.Current)) {
+            action = "SPLIT";
+            vars.log("Split on Pumpkin Patch THE panel");
         } else if (settings["configs"] && vars.configWaypoints != null && vars.configWaypoints.Contains(vars.panel.Current)) {
             action = "SPLIT";
             vars.log("Split on config file");
