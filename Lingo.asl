@@ -9,8 +9,13 @@ state("Lingo") {}
 
 startup
 {
+    // Relative to Livesplit.exe
+    vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_lingo.log";
     vars.log = (Action<string>)((string logLine) => {
         print("[Lingo ASL] " + logLine);
+        string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss.fff");
+        // AppendAllText will create the file if it doesn't exist.
+        System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
     });
 
     settings.Add("every",false,"Split on every panel solve");
